@@ -2,8 +2,12 @@ import re
 import json
 import numpy as np
 import streamlit as st
-from PIL import Image, ImageOps, ImageEnhance
+import io
+from PIL import Image, ImageOps, ImageEnhance, ImageFile
 import pytesseract
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 
 st.set_page_config(page_title="CoK Battle Tool", layout="centered")
 
