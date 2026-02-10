@@ -181,23 +181,50 @@ def effective_unit_power_realistic(d: dict, unit: str) -> float:
 
     return offense * (defense ** 0.5)
 
-def auto_mix_from_adv(adv: dict, min_inf=0.15):
-    # soften and emphasize strengths
-    weights = {u: (adv[u] ** 2) for u in ["inf", "cav", "arc"]}
-    s = sum(weights.values())
-    raw = {u: weights[u]/s for u in weights}
+def auto_mix_from_adv(adv: dict) -> dict:
+    """
+    adv: dict like {'inf': 1.17, 'cav': 1.83, 'arc': 1.43}
+    returns: mix percentages like {'cav': 50, 'arc': 30, 'inf': 20}
+    """
+    units = ["inf", "cav", "arc"]
 
-    if raw["inf"] < min_inf:
-        deficit = min_inf - raw["inf"]
-        raw["inf"] = min_inf
-        rest = raw["cav"] + raw["arc"]
-        raw["cav"] -= deficit * (raw["cav"]/rest)
-        raw["arc"] -= deficit * (raw["arc"]/rest)
+    def _to_float(x, default=1.0):
+        try:
+            if x is None:
+                return default
+            if isinstance(x, (int, float)):
+                return float(x)
+            s = str(x).strip()
+            s = s.replace("%", "").replace(",", ".")
+            return float(s)
+        except Exception:
+            return default
 
-    mix = {u: int(round(raw[u]*100)) for u in raw}
-    delta = 100 - sum(mix.values())
-    mix["cav"] += delta  # fix rounding on cav
+    # sanitize inputs
+    clean = {u: _to_float(adv.get(u, 1.0), 1.0) for u in units}
+
+    # guard against zero/negative
+    for u in units:
+        if clean[u] <= 0:
+            clean[u] = 1.0
+
+    # weights (square emphasizes the stronger advantage)
+    weights = {u: clean[u] ** 2 for u in units}
+    total = sum(weights.values()) or 1.0
+
+    # convert to %
+    raw = {u: weights[u] / total * 100.0 for u in units}
+
+    # round nicely to integers and sum to 100
+    mix = {u: int(round(raw[u])) for u in units}
+    diff = 100 - sum(mix.values())
+    if diff != 0:
+        # add/subtract diff to the highest weight unit
+        best = max(units, key=lambda u: raw[u])
+        mix[best] += diff
+
     return mix
+
 
 def score_mix(ratio: dict, mix: dict) -> float:
     return sum((mix[u]/100) * ratio[u] for u in ["inf","cav","arc"])
