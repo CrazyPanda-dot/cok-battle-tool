@@ -47,6 +47,19 @@ def ocr_text(img: Image.Image) -> str:
     pre = preprocess_pil(img)
     # English is enough for your CoK screens. Add 'deu' if needed.
     return pytesseract.image_to_string(pre, lang="eng")
+def open_uploaded_image(uploaded_file):
+    data = uploaded_file.getvalue()  # ✅ Bytes sicher holen
+    try:
+        img = Image.open(io.BytesIO(data))
+        img = ImageOps.exif_transpose(img)  # ✅ Handy-Rotation fixen
+        img.load()  # ✅ komplettes Laden erzwingen
+        return img.convert("RGB")
+    except Exception:
+        st.error(
+            f"❌ {uploaded_file.name}: Bild kann nicht gelesen werden.\n"
+            f"Bitte echte Screenshots (PNG/JPG) hochladen."
+        )
+        return None
 
 # ----------------------------
 # Parsing helpers
